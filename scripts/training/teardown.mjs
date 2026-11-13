@@ -10,7 +10,7 @@ import os from "os";
 import path from "path";
 import {
   ROOT, c, title, info, ok, warn, abort, run, select, confirm,
-  connectedOrgs, orgChoices, universe, parseJsonOutput
+  connectedOrgs, orgChoices, universe, parseJsonOutput, removeTempDir
 } from "../lib/util.mjs";
 
 // Everything the course puts in an org, across all three levels. A name that is
@@ -98,7 +98,7 @@ System.debug('Unassigned ' + psa.size() + ' permission set assignment(s)');
     "utf8"
   );
   const unassigned = runSf(["apex", "run", "--file", apexFile, "--target-org", target], { quiet: true });
-  fs.rmSync(apexFile, { force: true });
+  removeTempDir(apexFile);
   reportStep(unassigned, "  Permission sets unassigned", "unassign the permission sets");
 
   // The scheduled jobs. Lab 2.4 schedules CrewCapacityBatch nightly, and a
@@ -118,7 +118,7 @@ System.debug('Aborted ' + jobs.size() + ' scheduled job(s)');
     "utf8"
   );
   const unscheduled = runSf(["apex", "run", "--file", jobsFile, "--target-org", target], { quiet: true });
-  fs.rmSync(jobsFile, { force: true });
+  removeTempDir(jobsFile);
 
   // The public group of Lab 3.3. The lab is built on its absence: the first
   // action of US-062 fails because the org has no Crew Leads group, and the
@@ -134,7 +134,7 @@ System.debug('Deleted ' + groups.size() + ' public group(s)');
     "utf8"
   );
   const ungrouped = runSf(["apex", "run", "--file", groupFile, "--target-org", target], { quiet: true });
-  fs.rmSync(groupFile, { force: true });
+  removeTempDir(groupFile);
   reportStep(ungrouped, "  Crew Leads public group removed, when there was one", "remove the Crew Leads public group");
   reportStep(unscheduled, "  Scheduled jobs aborted", "abort the scheduled jobs");
 
@@ -264,7 +264,7 @@ System.debug('Deleted ' + groups.size() + ' public group(s)');
       "--test-level", "NoTestRun", "--ignore-warnings", "--wait", "30"],
     { quiet: true }
   );
-  fs.rmSync(dir, { recursive: true, force: true });
+  removeTempDir(dir);
   reportStep(page, "  The Installation record page is back to the standard one", "put the Installation record page back to the standard one");
 }
 
@@ -272,12 +272,12 @@ System.debug('Deleted ' + groups.size() + ' public group(s)');
  * The External Client Apps Lab 3.1 deploys, one per branch it moves to JWT
  * (preprod and main, all four in the earlier version of the lab), named
  * sfdxhardis<branch>. They hold nothing of the app, but they outlive it: the
- * next Add/Configure Org on the same org stops on "External Client App named
+ * next Add or Reconnect a Major Org on the same org stops on "External Client App named
  * sfdxhardisintegration already exists ... Have you deleted it?", which is every
  * learner who walks Level 3 twice on the same orgs. The app and its four
  * settings records go in one destructive deploy. Allowed to fail, like the rest.
  */
-// Only the names the course creates: Add/Configure Org names its app sfdxhardis<branch>,
+// Only the names the course creates: Add or Reconnect a Major Org names its app sfdxhardis<branch>,
 // Install Org Monitoring sfdxhardismon_<org>, and the settings records start with the
 // app name. Every sfdx-hardis project names its apps the same way, so matching any
 // sfdxhardis* app would also take another project's app off the learner's own Dev Hub.
@@ -328,7 +328,7 @@ ${types.map(([type, names]) => `    <types>\n${names.map((n) => `        <member
       "--test-level", "NoTestRun", "--ignore-warnings", "--wait", "30"],
     { quiet: true }
   );
-  fs.rmSync(dir, { recursive: true, force: true });
+  removeTempDir(dir);
   const apps = found.find(([type]) => type === "ExternalClientApplication")[1];
   reportStep(gone, `  External Client App(s) removed: ${apps.join(", ")}`, `remove the External Client Apps ${apps.join(", ")}`);
 }
@@ -370,7 +370,7 @@ export default async function teardown(args) {
   const apexFile = path.join(os.tmpdir(), `helios-teardown-${Date.now()}.apex`);
   fs.writeFileSync(apexFile, deleteStandardApex(), "utf8");
   const apex = run("sf", ["apex", "run", "--file", apexFile, "--target-org", target]);
-  fs.rmSync(apexFile, { force: true });
+  removeTempDir(apexFile);
   if (apex.code !== 0) {
     warn("The records could not all be deleted. The metadata removal below still runs.");
   } else {
@@ -413,7 +413,7 @@ export default async function teardown(args) {
       info(c.dim("  Some of it was still held. Second pass, now that what held it is gone..."));
     }
   }
-  fs.rmSync(dir, { recursive: true, force: true });
+  removeTempDir(dir);
   if (deploy.code !== 0) {
     abort(
       `The metadata could not be removed from ${target}.`,
